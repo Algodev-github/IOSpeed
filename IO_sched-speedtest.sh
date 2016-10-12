@@ -1,0 +1,220 @@
+#!/bin/bash
+# Copyright (C) 2016 Luca Miccio <lucmiccio@gmail.com>
+
+# Check if the user is root
+USER=$(whoami)
+if [[ "$USER" != 'root' ]]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+# Remove temporaty files
+function clean
+{
+	rm -f $SCHED_LOG $FILE_LOG test_*.fio
+}
+
+# Handle SIGINT - SIGTERM - SIGKILL
+trap_func() {
+	clean
+	echo
+	echo "WARNING: Tests interrupted..."
+	exit 1
+}
+
+trap trap_func SIGINT SIGTERM SIGKILL
+
+# Parameters
+APP_NAME="IO_sched-speedtest.sh"
+TIME=${1-60} # Seconds: 60 is the minimum value that does not cause
+	     # high fluctuations in results
+
+OUTPUT_FILE="max_blk_speed${TIME}s.txt"
+DEV="nullb0"
+TEST_TYPE=(read write randread randwrite)
+N_CPUCALC=$(grep "cpu cores" /proc/cpuinfo | tail -n 1 | sed 's/.*\([0-9]\)/\1/')
+N_CPU=${2-$N_CPUCALC}
+FILE_LOG=file.log
+SCHED_LOG=log
+
+
+# Help section
+display_help() {
+HELP_MESSAGE="$APP_NAME
+This script is intended to measure the maximum number of IOPS achievable
+with each of the available I/O schedulers. To this purpose, this script uses
+fio and null_blk (configured wih zero latency, see below for more details).
+Four types of tests are executed, based on I/O types:
+SEQREAD - SEQWRITE - RANDREAD - RANDWRITE
+
+USAGE (as root):
+
+$APP_NAME time n_threads
+
+Where:
+- time(seconds): how long it takes for every IO type test.
+- n_threads: number of threads to spawn for each IO type test
+-h|--help: display this help message
+
+EXAMPLE: $APP_NAME 30 4
+Launch the test for 30 seconds with the /dev/nullb0 device using 4 threads
+for each fio's jobs.
+
+DEFAULT VALUES:
+TIME: 60, N° Threads: $N_CPU
+
+CONFIGURATION USED FOR NULL_BLK
+The null_blk device created by the test has the following settings:
+- queue_mode=1
+- irqmode=0
+- completion_nsec=0
+- nr_devices=1
+
+AUTHOR:
+Luca Miccio <lucmiccio@gmail.com>" 
+
+echo "$HELP_MESSAGE"
+}
+
+if [[ "$1" = '-h'|| "$1" = '--help' ]];
+then
+	display_help
+	exit 0
+fi
+
+# Check inputs
+is_a_number() {
+	local number=$1
+	if [[ $number != '' &&  $number =~ ^-?[0-9]+$ ]]; 
+	then
+		: # No errors
+	else
+		echo "$number input not correct..."
+		exit 1;
+	fi
+}
+
+is_a_number "$TIME"
+
+if [ "$N_CPU" == '' ]
+then 
+	N_CPU=1
+fi
+
+is_a_number "$N_CPU"
+
+
+# Create fio's Jobfiles
+create_test_file() {
+	local RW_TYPE=$1
+
+	TEST_FILE=test_$RW_TYPE.fio
+
+TEST_FILE_CONFIG="
+[$RW_TYPE test]
+bs=4k
+ioengine=psync
+iodepth=4
+runtime=$TIME
+direct=1
+filename=/dev/$DEV
+rw=$RW_TYPE
+numjobs=$N_CPU
+group_reporting=1
+"
+
+		echo "$TEST_FILE_CONFIG" > $TEST_FILE
+
+}
+
+echo "Creating test files..."
+for type in "${TEST_TYPE[@]}"
+do
+	rm -f test_${type}.fio
+	create_test_file $type
+done
+
+# Check if there is an old null_blk module.
+# If it is enabled, replace it with the correct one.
+lsmod | grep null_blk > /dev/null
+
+echo "Creating null_blk device..."
+if [ $? -eq 0 ];
+then 
+	modprobe -r null_blk
+fi
+
+modprobe null_blk queue_mode=1 irqmode=0 completion_nsec=0 nr_devices=1
+
+# Check available schedulers
+SCHEDS=$(cat /sys/block/$DEV/queue/scheduler)
+
+# remove parentheses
+SCHEDS=$(echo $SCHEDS | sed 's/\[//')
+SCHEDS=$(echo $SCHEDS | sed 's/\]//')
+
+echo "Schedulers found:"
+IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
+echo "${SCHEDULERS[@]}"
+
+echo
+echo Starting tests ...
+
+# Main test loop
+N_SCHED=${#SCHEDULERS[@]}
+for sched in "${SCHEDULERS[@]}"
+do	
+	# Change scheduler of the device
+	echo $sched > /sys/block/$DEV/queue/scheduler 2> /dev/null 
+	
+	current_rep=1
+	for test_type in "${TEST_TYPE[@]}"
+	do
+		# Invoke test
+		echo "Scheduler: $sched - test $current_rep/4 ($test_type) - Number of parallel threads: $N_CPU - Duration ${TIME}s"
+		fio test_${test_type}.fio --output=$SCHED_LOG
+		OUTPUT=$(less $SCHED_LOG | grep -Eho 'iops=[^[:space:]]*' | cut -d '=' -f 2 | sed 's/.$//')
+		echo $OUTPUT >> $FILE_LOG
+		current_rep=$((current_rep+1))
+		echo
+	done
+done
+
+# Save results
+RESULTS=()
+	file_count=0
+	while IFS='' read -r line || [[ -n "$line" ]]; do
+		RESULTS[$file_count]=$line
+		file_count=$((file_count+1))
+	done < $FILE_LOG
+echo  ${RESULTS[@]}
+
+
+# Show data in a table format and save them in a $OUTPUT_FILE
+rm $OUTPUT_FILE
+echo
+echo Results
+echo "Unit of measure: IOPS			Time: ${TIME}s		Device: $DEV" | tee $OUTPUT_FILE
+echo "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
+{
+printf 'SCHEDULER\tSEQREAD\tSEQWRITE\tRANDREAD\tRANDWRITE\n'
+
+k=0
+for (( c=0; c<$N_SCHED; c++ ))
+do
+	read=$((k))
+	write=$((k+1))
+	randread=$((k+2))
+	randwrite=$((k+3))
+	printf '%s\t%s\t%s\t%s\t%s\n' "${SCHEDULERS[$c]}" "${RESULTS[$write]}" "${RESULTS[$read]}"\
+		"${RESULTS[$randwrite]}" "${RESULTS[$randread]}"
+	k=$((randwrite+1))
+done
+
+} | column -t -s $'\t'| tee  -a $OUTPUT_FILE
+
+echo | tee -a $OUTPUT_FILE
+
+echo "Results written in :" $OUTPUT_FILE
+
+clean
