@@ -1,5 +1,19 @@
 #!/bin/bash
-# Copyright (C) 2016 Luca Miccio <lucmiccio@gmail.com>
+#   Copyright (C) 2016 Luca Miccio <lucmiccio@gmail.com>
+
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 
 # Check if the user is root
 USER=$(whoami)
@@ -36,6 +50,7 @@ N_CPUCALC=$(grep "cpu cores" /proc/cpuinfo | tail -n 1 | sed 's/.*\([0-9]\)/\1/'
 N_CPU=${2-$N_CPUCALC}
 FILE_LOG=file.log
 SCHED_LOG=log
+BLK_MQ_SCHED="blk-mq"
 
 
 # Help section
@@ -54,7 +69,7 @@ $APP_NAME time n_threads
 Where:
 - time(seconds): how long it takes for every IO type test.
 - n_threads: number of threads to spawn for each IO type test
--h|--help: display this help message
+- h|--help: display this help message
 
 EXAMPLE: $APP_NAME 30 4
 Launch the test for 30 seconds with the /dev/nullb0 device using 4 threads
@@ -65,7 +80,7 @@ TIME: 60, N° Threads: $N_CPU
 
 CONFIGURATION USED FOR NULL_BLK
 The null_blk device created by the test has the following settings:
-- queue_mode=1
+- queue_mode=1|2
 - irqmode=0
 - completion_nsec=0
 - nr_devices=1
@@ -123,7 +138,7 @@ numjobs=$N_CPU
 group_reporting=1
 "
 
-		echo "$TEST_FILE_CONFIG" > $TEST_FILE
+echo "$TEST_FILE_CONFIG" > $TEST_FILE
 
 }
 
@@ -144,18 +159,27 @@ then
 	modprobe -r null_blk
 fi
 
-modprobe null_blk queue_mode=1 irqmode=0 completion_nsec=0 nr_devices=1
+Q_MODE=1 # Default queue_mode=1 single queue
+CUR_DEV=$(basename `mount | grep "on / " | cut -f 1 -d " "` | sed 's/\(...\).*/\1/g')
 
 # Check available schedulers
-SCHEDS=$(cat /sys/block/$DEV/queue/scheduler)
-
-# remove parentheses
-SCHEDS=$(echo $SCHEDS | sed 's/\[//')
-SCHEDS=$(echo $SCHEDS | sed 's/\]//')
+SCHEDS=$(cat /sys/block/$CUR_DEV/queue/scheduler)
 
 echo "Schedulers found:"
-IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
-echo "${SCHEDULERS[@]}"
+if [ "$SCHEDS" == 'none' ]; #blk-mq enabled
+then 
+	Q_MODE=2
+	echo "Blk-mq enabled. Switching to multi-queue mode."
+	SCHEDULERS=$BLK_MQ_SCHED
+else 
+	# remove parentheses
+	SCHEDS=$(echo $SCHEDS | sed 's/\[//')
+	SCHEDS=$(echo $SCHEDS | sed 's/\]//')
+	IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
+	echo "${SCHEDULERS[@]}"
+fi
+
+modprobe null_blk queue_mode=$Q_MODE irqmode=0 completion_nsec=0 nr_devices=1
 
 echo
 echo Starting tests ...
@@ -164,9 +188,12 @@ echo Starting tests ...
 N_SCHED=${#SCHEDULERS[@]}
 for sched in "${SCHEDULERS[@]}"
 do	
-	# Change scheduler of the device
-	echo $sched > /sys/block/$DEV/queue/scheduler 2> /dev/null 
-	
+	# Change scheduler of the device if needed
+	if [ $sched != $BLK_MQ_SCHED ];
+	then
+		echo $sched > /sys/block/$DEV/queue/scheduler 2> /dev/null 
+	fi
+
 	current_rep=1
 	for test_type in "${TEST_TYPE[@]}"
 	do
