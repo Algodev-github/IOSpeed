@@ -1,43 +1,52 @@
-Scheduler speed test
+This test script is designed to measure the performance of I/O
+schedulers in blk or of blk-mq alone, where no I/O scheduler is
+available yet.  The script automatically checks whether blk or blk-mq
+is in use, and, in the first case, measures performance with all
+available schedulers.
 
-This test is designed to measure the performance of I/O schedulers,
-especially of BFQ, in the prospect of a possible integration in
-blk-mq. The test exercises only blk, as existing I/O schedulers are
-currently available only in blk. By comparing the performance of BFQ
-with that of NOOP, it is possible to have an idea, by difference, of
-the overhead entailed by BFQ.
-
-The test is executed by a script, IO_sched-speedtest.sh, that measures
-I/O speed for each scheduler and for each of the following I/O types:
+In more detail, the script measures the maximum number of IOPS
+achievable with each scheduler (or only with blk-mq), and for each of
+the following I/O types:
 - Sequential read
 - Sequential write
 - Random read
 - Random write
 
-The script generates, with fio, I/O for the null_blk virtual
-device. The latter is configured to simply receive IOs as fast as
-possible and acknowledge their completion immediately.  Further
-details about the tests can be found in the script itself.
+As for blk, by comparing the performance of a scheduler with that of
+NOOP, it is possible to have an idea, by difference, of the overhead
+entailed by the scheduler.
+
+As for inner workings, the script generates, with fio, I/O for the
+null_blk virtual device.  The latter is configured to simply receive
+IOs as fast as possible and acknowledge their completion immediately.
 
 In more detail, here are the parameters used for null_blk:
-- queue_mode=1
+- queue_mode=1|2
 - irqmode=0
 - completion_nsec=0
 - nr_devices=1
 
+Further details can be found in the script itself.
+
 Finally, we report below the output of the script for a system with
 the SMP support disabled (to measure more precisely the overhead on a
-CPU and rule out issues related to parallel execution). As for the
+CPU, and rule out issues related to parallel execution). As for the
 hardware configuration, the system was equipped with a 2.3 GHz CPU and
 16 GB of DD3 RAM at 1600 MHz. The version of BFQ used in the test is
-v7r11.
+v8r11.
 
-Unit of measure: IOPS			Time: 60s		Device: nullb0
+Sample output:
+
+Unit of measure: KIOPS			Time: 60s		Device: nullb0
 Number of parallel threads: 1
-SCHEDULER  SEQWRITE  SEQREAD  RANDWRITE  RANDREAD
-noop       491312    874609   461447     751048
-deadline   466602    852853   453715     780750
-cfq        393835    458640   379554     432796
-bfq        382991    576160   363469     527779
+SCHEDULER  SEQREAD  SEQWRITE  RANDREAD  RANDWRITE
+noop       899K     484K      719K      468K
+deadline   881K     488K      797K      458K
+cfq        436K     375K      411K      359K
+bfq        319K     242K      254K      214K
 
-Author: Luca Miccio <lucmiccio@gmail.com>
+Unit of measure: KIOPS			Time: 60s		Device: nullb0
+Number of parallel threads: 1
+SCHEDULER  SEQREAD  SEQWRITE  RANDREAD  RANDWRITE
+blk-mq     974K     543K      892K      511K
+
