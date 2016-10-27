@@ -201,7 +201,14 @@ do
 		echo "Scheduler: $sched - test $current_rep/4 ($test_type) - Number of parallel threads: $N_CPU - Duration ${TIME}s"
 		fio test_${test_type}.fio --output=$SCHED_LOG
 		OUTPUT=$(less $SCHED_LOG | grep -Eho 'iops=[^[:space:]]*' | cut -d '=' -f 2 | sed 's/.$//')
-		echo $OUTPUT >> $FILE_LOG
+
+		# Format output value to KIOPs
+		if [ ${OUTPUT: -1} != 'K' ];
+		then
+			OUTPUT=$(echo "$OUTPUT / 1000"| bc)K
+		fi
+
+        echo $OUTPUT >> $FILE_LOG
 		current_rep=$((current_rep+1))
 		echo
 	done
@@ -221,7 +228,7 @@ echo  ${RESULTS[@]}
 rm $OUTPUT_FILE
 echo
 echo Results
-echo "Unit of measure: IOPS			Time: ${TIME}s		Device: $DEV" | tee $OUTPUT_FILE
+echo "Unit of measure: KIOPS			Time: ${TIME}s		Device: $DEV" | tee $OUTPUT_FILE
 echo "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
 {
 printf 'SCHEDULER\tSEQREAD\tSEQWRITE\tRANDREAD\tRANDWRITE\n'
@@ -233,8 +240,8 @@ do
 	write=$((k+1))
 	randread=$((k+2))
 	randwrite=$((k+3))
-	printf '%s\t%s\t%s\t%s\t%s\n' "${SCHEDULERS[$c]}" "${RESULTS[$write]}" "${RESULTS[$read]}"\
-		"${RESULTS[$randwrite]}" "${RESULTS[$randread]}"
+	printf '%s\t%s\t%s\t%s\t%s\n' "${SCHEDULERS[$c]}" "${RESULTS[$read]}" "${RESULTS[$write]}"\
+		"${RESULTS[$randread]}" "${RESULTS[$randwrite]}"
 	k=$((randwrite+1))
 done
 
