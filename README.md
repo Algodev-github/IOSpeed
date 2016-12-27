@@ -13,6 +13,6 @@ More information about the test and its goals are in IO_sched-speedtest.txt file
 Execute **./IO_sched-speedtest.sh -h** for more options.
 
 #Info
-For more information about Algodev group and its projects visit out [site](http://algo.ing.unimo.it/algodev/projects.php)
+For more information about Algodev group and its projects visit our [site](http://algo.ing.unimo.it/algodev/projects.php)
 #License
 This program is under [GNU General Public License](https://www.gnu.org/licenses/gpl-3.0-standalone.html)
