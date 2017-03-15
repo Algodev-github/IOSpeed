@@ -1,4 +1,4 @@
-#IO Speedtest
+# IO Speedtest
 This test script is designed to measure the performance of I/O
 schedulers in blk or of blk-mq alone, where no I/O scheduler is
 available yet.  The script automatically checks whether blk or blk-mq
@@ -12,7 +12,7 @@ More information about the test and its goals are in IO_sched-speedtest.txt file
 
 Execute **./IO_sched-speedtest.sh -h** for more options.
 
-#Info
+##  Info
 For more information about Algodev group and its projects visit out [site](http://algo.ing.unimo.it/algodev/projects.php)
-#License
+## License
 This program is under [GNU General Public License](https://www.gnu.org/licenses/gpl-3.0-standalone.html)
