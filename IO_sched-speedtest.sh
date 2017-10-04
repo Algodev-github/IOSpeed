@@ -14,6 +14,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+DEBUG=1
 
 # Help section
 display_help() {
@@ -36,6 +37,22 @@ Where:
 EXAMPLE: $APP_NAME 30 4
 Launch the test for 30 seconds with the /dev/nullb0 device using 4 threads
 for each fio's jobs.
+
+Debug mode:
+The debug mode can be enabled by setting the DEBUG variable in the file.
+Usage (as root):
+$APP_NAME time n_threads \"schedulers\" \"test_type\"
+
+Where:
+- schedulers: list of the schedulers to test
+- test_type: list of the type of test
+	Available types: read, write, randread, randwrite
+The others options have the same meaning as the \"no debug\" mode.
+
+EXAMPLE: $APP_NAME 30 4 \"bfq mq-deadline\" \"read write\"
+Launch the test for 30 seconds with the /dev/nullb0 device using 4 threads
+for each fio's jobs and use only the selecte I/O schedulers and testing
+only sequential read and sequential write.
 
 DEFAULT VALUES:
 TIME: 60, N° Threads: $N_CPU
@@ -141,6 +158,12 @@ echo "$TEST_FILE_CONFIG" > $TEST_FILE
 
 }
 
+# Debug section
+if [ $DEBUG -eq 1 ]; then #debug active
+	echo "DEBUG MODE ENABLED"
+	TEST_TYPE=($4)
+fi
+
 echo "Creating test files..."
 for type in "${TEST_TYPE[@]}"
 do
@@ -177,7 +200,16 @@ SCHEDS=$(echo $SCHEDS | sed 's/\[//')
 SCHEDS=$(echo $SCHEDS | sed 's/\]//')
 IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
 
-echo "${SCHEDULERS[@]}"
+if [ $DEBUG -eq 1 ]; then #debug active
+        SCHEDULERS=($3)
+	echo "${SCHEDULERS[@]}"
+	echo "DEBUG: Overriding scheduler"
+	echo "DEBUG: Using schedulers -> ( ${SCHEDULERS[@]} )"
+elif
+	echo "${SCHEDULERS[@]}"
+fi
+
+echo "Test type: ${TEST_TYPE[@]}"
 
 modprobe null_blk queue_mode=$Q_MODE irqmode=0 completion_nsec=0 nr_devices=1
 
