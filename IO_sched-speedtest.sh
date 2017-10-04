@@ -161,22 +161,23 @@ fi
 Q_MODE=1 # Default queue_mode=1 single queue
 CUR_DEV=$(basename `mount | grep "on / " | cut -f 1 -d " "` | sed 's/\(...\).*/\1/g')
 
-# Check available schedulers
-SCHEDS=$(cat /sys/block/$CUR_DEV/queue/scheduler)
-
-echo "Schedulers found:"
-if [ "$SCHEDS" == 'none' ]; #blk-mq enabled
+# Check if blk-mq is enabled
+if [ -d /sys/block/$CUR_DEV/mq ];
 then 
 	Q_MODE=2
 	echo "Blk-mq enabled. Switching to multi-queue mode."
-	SCHEDULERS=$BLK_MQ_SCHED
-else 
-	# remove parentheses
-	SCHEDS=$(echo $SCHEDS | sed 's/\[//')
-	SCHEDS=$(echo $SCHEDS | sed 's/\]//')
-	IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
-	echo "${SCHEDULERS[@]}"
 fi
+
+# Check available schedulers
+echo -n "Using schedulers: "
+SCHEDS=$(cat /sys/block/$CUR_DEV/queue/scheduler)
+
+# remove parentheses
+SCHEDS=$(echo $SCHEDS | sed 's/\[//')
+SCHEDS=$(echo $SCHEDS | sed 's/\]//')
+IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
+
+echo "${SCHEDULERS[@]}"
 
 modprobe null_blk queue_mode=$Q_MODE irqmode=0 completion_nsec=0 nr_devices=1
 
