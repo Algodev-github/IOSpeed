@@ -142,7 +142,7 @@ create_test_file() {
 	TEST_FILE=test_$RW_TYPE.fio
 
 TEST_FILE_CONFIG="
-[$RW_TYPE test]
+[global]
 bs=4k
 ioengine=psync
 iodepth=4
@@ -150,12 +150,24 @@ runtime=$TIME
 direct=1
 filename=/dev/$DEV
 rw=$RW_TYPE
-numjobs=$N_CPU
 group_reporting=1
 "
 
-echo "$TEST_FILE_CONFIG" > $TEST_FILE
+	echo "$TEST_FILE_CONFIG" > $TEST_FILE
 
+	MASK=1
+	for i in `seq 1 $N_CPU`;
+		do
+	
+JOB="
+[job $i]
+cpumask=$MASK
+"       
+		if [ $MASK -ne $(nproc) ];then     
+			MASK=$((MASK*2))
+		fi
+		echo "$JOB" >> $TEST_FILE    
+	        done  
 }
 
 # Debug section
