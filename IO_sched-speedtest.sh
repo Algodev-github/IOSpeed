@@ -15,44 +15,6 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# Check if the user is root
-USER=$(whoami)
-if [[ "$USER" != 'root' ]]; then
-   echo "This script must be run as root" 1>&2
-   exit 1
-fi
-
-# Remove temporaty files
-function clean
-{
-	rm -f $SCHED_LOG $FILE_LOG test_*.fio
-}
-
-# Handle SIGINT - SIGTERM - SIGKILL
-trap_func() {
-	clean
-	echo
-	echo "WARNING: Tests interrupted..."
-	exit 1
-}
-
-trap trap_func SIGINT SIGTERM SIGKILL
-
-# Parameters
-APP_NAME="IO_sched-speedtest.sh"
-TIME=${1-60} # Seconds: 60 is the minimum value that does not cause
-	     # high fluctuations in results
-
-OUTPUT_FILE="max_blk_speed${TIME}s.txt"
-DEV="nullb0"
-TEST_TYPE=(read write randread randwrite)
-N_CPUCALC=$(grep "cpu cores" /proc/cpuinfo | tail -n 1 | sed 's/.*\([0-9]\)/\1/')
-N_CPU=${2-$N_CPUCALC}
-FILE_LOG=file.log
-SCHED_LOG=log
-BLK_MQ_SCHED="blk-mq"
-
-
 # Help section
 display_help() {
 HELP_MESSAGE="$APP_NAME
@@ -96,6 +58,43 @@ then
 	display_help
 	exit 0
 fi
+
+# Check if the user is root
+USER=$(whoami)
+if [[ "$USER" != 'root' ]]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+# Remove temporaty files
+function clean
+{
+	rm -f $SCHED_LOG $FILE_LOG test_*.fio
+}
+
+# Handle SIGINT - SIGTERM - SIGKILL
+trap_func() {
+	clean
+	echo
+	echo "WARNING: Tests interrupted..."
+	exit 1
+}
+
+trap trap_func SIGINT SIGTERM SIGKILL
+
+# Parameters
+APP_NAME="IO_sched-speedtest.sh"
+TIME=${1-60} # Seconds: 60 is the minimum value that does not cause
+	     # high fluctuations in results
+
+OUTPUT_FILE="max_blk_speed${TIME}s.txt"
+DEV="nullb0"
+TEST_TYPE=(read write randread randwrite)
+N_CPUCALC=$(grep "cpu cores" /proc/cpuinfo | tail -n 1 | sed 's/.*\([0-9]\)/\1/')
+N_CPU=${2-$N_CPUCALC}
+FILE_LOG=file.log
+SCHED_LOG=log
+BLK_MQ_SCHED="blk-mq"
 
 # Check inputs
 is_a_number() {
