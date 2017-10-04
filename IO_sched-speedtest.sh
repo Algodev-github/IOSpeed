@@ -112,6 +112,8 @@ N_CPU=${2-$N_CPUCALC}
 FILE_LOG=file.log
 SCHED_LOG=log
 BLK_MQ_SCHED="blk-mq"
+RESULTS_FOLDER="results/"
+OUTPUT_FILE="${RESULTS_FOLDER}max_blk_speed-${TIME}s-${N_CPU}t.txt"
 
 # Check inputs
 is_a_number() {
@@ -228,6 +230,7 @@ modprobe null_blk queue_mode=$Q_MODE irqmode=0 completion_nsec=0 nr_devices=1
 echo
 echo Starting tests ...
 
+touch $FILE_LOG
 # Main test loop
 N_SCHED=${#SCHEDULERS[@]}
 for sched in "${SCHEDULERS[@]}"
@@ -267,9 +270,14 @@ RESULTS=()
 	done < $FILE_LOG
 echo  ${RESULTS[@]}
 
+# Create the results folder if it does not exist
+if [ ! -d $RESULTS_FOLDER ];then
+        echo "Results folder does not exist. Creating it"
+        mkdir $RESULTS_FOLDER
+fi
 
 # Show data in a table format and save them in a $OUTPUT_FILE
-rm $OUTPUT_FILE
+rm $OUTPUT_FILE 2> /dev/null_blk
 echo
 echo Results
 echo "Unit of measure: KIOPS			Time: ${TIME}s		Device: $DEV" | tee $OUTPUT_FILE
