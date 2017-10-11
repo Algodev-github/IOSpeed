@@ -223,7 +223,7 @@ do
 	for test_type in "${TEST_TYPE[@]}"
 	do
 		# Invoke test
-		echo "Scheduler: $sched - test $current_rep/4 ($test_type) - Number of parallel threads: $N_CPU - Duration ${TIME}s"
+		echo "Scheduler: $sched - test $current_rep/${#TEST_TYPE[@]} ($test_type) - Number of parallel threads: $N_CPU - Duration ${TIME}s"
 		fio test_${test_type}.fio --output=$SCHED_LOG
 		OUTPUT=$(less $SCHED_LOG | grep -Eho 'iops=[^[:space:]]*' | cut -d '=' -f 2 | sed 's/.$//')
 
