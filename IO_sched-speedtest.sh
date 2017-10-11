@@ -151,7 +151,12 @@ lsmod | grep null_blk > /dev/null
 echo "Creating null_blk device..."
 if [ $? -eq 0 ];
 then
-	modprobe -r null_blk
+	modprobe -r null_blk 2> /dev/null
+	if [ $? -eq 0 ]; # null_blk is not a module but built-in
+		echo "ERROR: problem with the null_blk module"
+		echo "CHECK: Null block is probably built in. Not supported yet. Aborting"
+		exit 1
+	fi
 fi
 
 Q_MODE=1 # Default queue_mode=1 single queue
