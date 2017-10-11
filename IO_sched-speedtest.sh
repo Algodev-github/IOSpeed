@@ -152,7 +152,7 @@ echo "Creating null_blk device..."
 if [ $? -eq 0 ];
 then
 	modprobe -r null_blk 2> /dev/null
-	if [ $? -eq 0 ]; # null_blk is not a module but built-in
+	if [ $? -eq 1 ]; then # null_blk is not a module but built-in
 		echo "ERROR: problem with the null_blk module"
 		echo "CHECK: Null block is probably built in. Not supported yet. Aborting"
 		exit 1
