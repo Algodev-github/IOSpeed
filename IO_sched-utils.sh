@@ -31,6 +31,47 @@ is_a_number() {
 	fi
 }
 
+check_if_value_in () {
+	local value=$1
+	shift
+
+	local in=1 # default we have no match
+	for element in "$@"; do
+        if [ "$element" == "$value" ]; then
+            in=0
+            break
+        fi
+    done
+
+	if [ $in -eq 1 ]; then
+		echo "ERROR: no value $value found in \""$@"\". Aborting."
+		exit 1
+	fi
+}
+# Check if the test parameters are correct and not empty
+check_parameters() {
+
+	local AVAILABLE_TYPE=(read write randread randwrite)
+
+	if [ ${#SCHEDULERS[@]} -eq 0 ]; then
+		echo "WARNING: no scheduler found. Aborting test"
+		exit 1
+	fi
+	# Check if the scheduler(s) inserted are available
+	for sched in "${SCHEDULERS[@]}"; do
+		check_if_value_in "$sched" "${AVAILABLE_SCHED[@]}"
+	done
+
+	if [ ${#TEST_TYPE[@]} -eq 0 ]; then
+		echo "WARNING: no type found. Aborting test"
+		exit 1
+	fi
+
+	# Check if the scheduler(s) inserted are available
+	for type in "${TEST_TYPE[@]}"; do
+		check_if_value_in "$type" "${AVAILABLE_TYPE[@]}"
+	done
+}
 
 ### Fiojobs file creator
 

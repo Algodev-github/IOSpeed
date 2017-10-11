@@ -170,12 +170,18 @@ SCHEDS=$(cat /sys/block/$CUR_DEV/queue/scheduler)
 SCHEDS=$(echo $SCHEDS | sed 's/\[//')
 SCHEDS=$(echo $SCHEDS | sed 's/\]//')
 IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
+IFS=' ' read -r -a AVAILABLE_SCHED <<< "$SCHEDS"
+
 
 if [ $DEBUG -eq 1 ]; then #debug active
         SCHEDULERS=($3)
 	echo "DEBUG: Overriding scheduler"
 	echo "DEBUG: Using schedulers -> ( ${SCHEDULERS[@]} )"
+
 fi
+
+# Check Parameters before test
+check_parameters
 
 echo "Using schedulers: ${SCHEDULERS[@]}"
 
