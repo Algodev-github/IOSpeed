@@ -16,7 +16,10 @@
 
 # This file contains all the utility functions used by the IO_sched-speedtest.sh
 
-# Input checkers
+## Input checkers
+
+# Check if the value passed to this function is
+# a number.
 is_a_number() {
 	local number=$1
 	if [[ $number != '' &&  $number =~ ^-?[0-9]+$ ]];
@@ -29,7 +32,9 @@ is_a_number() {
 }
 
 
-# Fiojobs file creator
+### Fiojobs file creator
+
+# Create the fiojob file
 create_test_file() {
 	local RW_TYPE=$1
     local TIME=$2
@@ -65,47 +70,82 @@ cpumask=$MASK
 	   done
 }
 
-# Results saving
 
-save_results(){
-    RESULTS=()
-    	file_count=0
-    	while IFS='' read -r line || [[ -n "$line" ]]; do
-    		RESULTS[$file_count]=$line
-    		file_count=$((file_count+1))
-    	done < $FILE_LOG
-    echo  ${RESULTS[@]}
+### Results saving
 
-    # Create the results folder if it does not exist
-    if [ ! -d $RESULTS_FOLDER ];then
-            echo "Results folder does not exist. Creating it"
-            mkdir $RESULTS_FOLDER
-    fi
+# Create the correct header for the output
+# depending on the type test executed
+HEADER=""
+create_header() {
+	HEADER="SCHEDULER\t"
+	for test_type in ${TEST_TYPE[@]}; do
 
-    # Show data in a table format and save them in a $OUTPUT_FILE
-    rm $OUTPUT_FILE 2> /dev/null_blk
-    echo
-    echo Results
-    echo "Unit of measure: KIOPS			Time: ${TIME}s		Device: $DEV" | tee $OUTPUT_FILE
-    echo "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
-    {
-    printf 'SCHEDULER\tSEQREAD\tSEQWRITE\tRANDREAD\tRANDWRITE\n'
+	        case "$test_type" in
+	                read)
+	                        test_type="SEQREAD\t"
+	                        ;;
+	                write)
+	                        test_type="SEQWRITE\t"
+	                        ;;
+	                randread)
+	                        test_type="RANDREAD\t"
+	                        ;;
+	                randwrite)
+	                        test_type="RANDWRITE\t"
+	                        ;;
+	                *)
+	                        echo "ERROR"
+	                        exit 1
+	        esac
+	        header=$HEADER$test_type
+	done
+}
 
-    k=0
-    for (( c=0; c<$N_SCHED; c++ ))
-    do
-    	read=$((k))
-    	write=$((k+1))
-    	randread=$((k+2))
-    	randwrite=$((k+3))
-    	printf '%s\t%s\t%s\t%s\t%s\n' "${SCHEDULERS[$c]}" "${RESULTS[$read]}" "${RESULTS[$write]}"\
-    		"${RESULTS[$randread]}" "${RESULTS[$randwrite]}"
-    	k=$((randwrite+1))
-    done
+# Save the results
+save_results() {
+	RESULTS=()
+	        file_count=0
+	        while IFS='' read -r line || [[ -n "$line" ]]; do
+	                RESULTS[$file_count]=$line
+	                file_count=$((file_count+1))
+	        done < $FILE_LOG
 
-    } | column -t -s $'\t'| tee  -a $OUTPUT_FILE
+	create_header
 
-    echo | tee -a $OUTPUT_FILE
+	# Show data in a table format and save them in a $OUTPUT_FILE
+	if [ ! -d $RESULTS_FOLDER ];then
+	        echo "Results folder does not exist. Creating it"
+	        mkdir $RESULTS_FOLDER
+	fi
 
-    echo "Results written in :" $OUTPUT_FILE
+	rm $OUTPUT_FILE
+	echo
+	echo Results
+	echo "Unit of measure: KIOPS                    Time: ${TIME}s          Device: $DEV" | tee $OUTPUT_FILE
+	echo "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
+	echo "Number of cpu core(s): $(nproc)"
+	{
+	printf $header'\n'
+
+	k=0
+	index=0
+	for (( c=0; c<$N_SCHED; c++ ))
+	do
+	        local_index=1
+	        for t in ${TEST_TYPE[@]};do
+	                declare "test_${local_index}_value"=${RESULTS[$index]}
+	                index=$((index+1))
+	                local_index=$((local_index+1))
+	        done
+
+	        printf '%s\t%s\t%s\t%s\t%s\n' "${SCHEDULERS[$c]}" "$test_1_value" "$test_2_value"\
+	                "$test_3_value" "$test_4_value"
+	        k=$((n_k+1))
+	done
+
+	} | column -t -s $'\t'| tee  -a $OUTPUT_FILE
+
+	echo | tee -a $OUTPUT_FILE
+
+	echo "Results written in :" $OUTPUT_FILE
 }
