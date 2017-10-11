@@ -48,6 +48,7 @@ check_if_value_in () {
 		exit 1
 	fi
 }
+
 # Check if the test parameters are correct and not empty
 check_parameters() {
 
@@ -71,6 +72,18 @@ check_parameters() {
 	for type in "${TEST_TYPE[@]}"; do
 		check_if_value_in "$type" "${AVAILABLE_TYPE[@]}"
 	done
+}
+
+# Setup cpu governor scaling to $1
+# TODO: restore previous value
+setup_cpu_governor(){
+	local SCALING_CPU=$1
+	echo -n "Setting up cpu governor scaling -> "
+	for CPUFREQ in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor;
+		do [ -f $CPUFREQ ] || continue;
+			echo -n $SCALING_CPU > $CPUFREQ;
+		done
+	echo " value set to $SCALING_CPU"
 }
 
 ### Fiojobs file creator

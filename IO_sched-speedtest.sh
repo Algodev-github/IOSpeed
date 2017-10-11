@@ -189,6 +189,8 @@ fi
 # Check Parameters before test
 check_parameters
 
+setup_cpu_governor "performance"
+
 echo "Using schedulers: ${SCHEDULERS[@]}"
 
 echo "Test type: ${TEST_TYPE[@]}"
