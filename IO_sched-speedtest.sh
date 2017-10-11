@@ -14,6 +14,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Set this value to 1 to enable debug mode(more on help section), 0 otherwise
 DEBUG=1
 
 # Help section
@@ -55,7 +56,7 @@ for each fio's jobs and use only the selecte I/O schedulers and testing
 only sequential read and sequential write.
 
 DEFAULT VALUES:
-TIME: 60, N° Threads: $N_CPU
+TIME: 60, N° Threads: $(nproc)
 
 CONFIGURATION USED FOR NULL_BLK
 The null_blk device created by the test has the following settings:
@@ -76,6 +77,7 @@ then
 	exit 0
 fi
 
+# Source the utils
 . ./IO_sched-utils.sh
 
 # Check if the user is root
@@ -85,7 +87,7 @@ if [[ "$USER" != 'root' ]]; then
    exit 1
 fi
 
-# Remove temporaty files
+# Remove temporary files and disable null_blk module
 function clean
 {
 	echo "Removing garbage..."
@@ -116,14 +118,13 @@ N_CPUCALC=$(grep "cpu cores" /proc/cpuinfo | tail -n 1 | sed 's/.*\([0-9]\)/\1/'
 N_CPU=${2-$N_CPUCALC}
 FILE_LOG=file.log
 SCHED_LOG=log
-BLK_MQ_SCHED="blk-mq"
 RESULTS_FOLDER="results/"
-OUTPUT_FILE="${RESULTS_FOLDER}max_blk_speed-${TIME}s-${N_CPU}t.txt"
+OUTPUT_FILE="${RESULTS_FOLDER}io_speed_results-${TIME}s-${N_CPU}t.txt"
 
 # Check inputs
 is_a_number "$TIME"
 
-if [ "$N_CPU" == '' ];then
+if [ "$N_CPU" == '' ]; then
 	N_CPU=1
 fi
 
@@ -173,7 +174,7 @@ IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
 IFS=' ' read -r -a AVAILABLE_SCHED <<< "$SCHEDS"
 
 
-if [ $DEBUG -eq 1 ]; then #debug active
+if [ $DEBUG -eq 1 ]; then # Debug active
         SCHEDULERS=($3)
 	echo "DEBUG: Overriding scheduler"
 	echo "DEBUG: Using schedulers -> ( ${SCHEDULERS[@]} )"
@@ -198,10 +199,18 @@ N_SCHED=${#SCHEDULERS[@]}
 for sched in "${SCHEDULERS[@]}"
 do
 	# Change scheduler of the device if needed
-	if [ $sched != $BLK_MQ_SCHED ];
-	then
-		echo $sched > /sys/block/$DEV/queue/scheduler 2> /dev/null
-	fi
+	echo $sched > /sys/block/$DEV/queue/scheduler 2> /dev/null
+
+	# If we are using the BFQ I/O scheduler set the low_latency and
+	# the slice_idle parameters to 0 so that we can achieve the
+	# maximum throughput with BFQ.
+	# N.B: For a complete and deeper analysis these values would be
+	# set to their defaults.
+	if [ "$sched" == "bfq" ]; then
+                echo "BFQ detected: Disabling low_latency and slice idle"
+                echo 0 > /sys/block/$DEV/queue/iosched/low_latency
+                echo 0 > /sys/block/$DEV/queue/iosched/slice_idle
+    fi
 
 	current_rep=1
 	for test_type in "${TEST_TYPE[@]}"
@@ -223,7 +232,7 @@ do
 	done
 done
 
-# Save results
+# Save results, clean all files and exit
 save_results
-
 clean
+exit 0

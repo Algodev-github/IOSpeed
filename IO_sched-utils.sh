@@ -107,7 +107,7 @@ cpumask=$MASK
 "
 			 MASK=$((MASK*2))
 
-		           echo "$JOB" >> $TEST_FILE
+		     echo "$JOB" >> $TEST_FILE
 	   done
 }
 
@@ -163,8 +163,8 @@ save_results() {
 	echo
 	echo Results
 	echo "Unit of measure: KIOPS                    Time: ${TIME}s          Device: $DEV" | tee $OUTPUT_FILE
-	echo "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
-	echo "Number of cpu core(s): $(nproc)"
+	echo -n "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
+	echo -e "\tNumber of cpu core(s): $(nproc)\n"| tee -a $OUTPUT_FILE
 	{
 	printf $header'\n'
 
