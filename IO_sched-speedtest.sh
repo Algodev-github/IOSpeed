@@ -65,7 +65,7 @@ The null_blk device created by the test has the following settings:
 - nr_devices=1
 
 AUTHOR:
-Luca Miccio <lucmiccio@gmail.com>" 
+Luca Miccio <lucmiccio@gmail.com>"
 
 echo "$HELP_MESSAGE"
 }
@@ -75,6 +75,8 @@ then
 	display_help
 	exit 0
 fi
+
+. ./IO_sched-utils.sh
 
 # Check if the user is root
 USER=$(whoami)
@@ -86,7 +88,10 @@ fi
 # Remove temporaty files
 function clean
 {
-	rm -f $SCHED_LOG $FILE_LOG test_*.fio
+	echo "Removing garbage..."
+    rm -f $SCHED_LOG $FILE_LOG test_*.fio 2> /dev/null
+    echo "Removing null block module..."
+    modprobe -r null_blk 2> /dev/null
 }
 
 # Handle SIGINT - SIGTERM - SIGKILL
@@ -116,61 +121,14 @@ RESULTS_FOLDER="results/"
 OUTPUT_FILE="${RESULTS_FOLDER}max_blk_speed-${TIME}s-${N_CPU}t.txt"
 
 # Check inputs
-is_a_number() {
-	local number=$1
-	if [[ $number != '' &&  $number =~ ^-?[0-9]+$ ]]; 
-	then
-		: # No errors
-	else
-		echo "$number input not correct..."
-		exit 1;
-	fi
-}
-
 is_a_number "$TIME"
 
-if [ "$N_CPU" == '' ]
-then 
+if [ "$N_CPU" == '' ];then
 	N_CPU=1
 fi
 
 is_a_number "$N_CPU"
 
-
-# Create fio's Jobfiles
-create_test_file() {
-	local RW_TYPE=$1
-
-	TEST_FILE=test_$RW_TYPE.fio
-
-TEST_FILE_CONFIG="
-[global]
-bs=4k
-ioengine=psync
-iodepth=4
-runtime=$TIME
-direct=1
-filename=/dev/$DEV
-rw=$RW_TYPE
-group_reporting=1
-"
-
-	echo "$TEST_FILE_CONFIG" > $TEST_FILE
-
-	MASK=1
-	for i in `seq 1 $N_CPU`;
-		do
-	
-JOB="
-[job $i]
-cpumask=$MASK
-"       
-		if [ $MASK -ne $(nproc) ];then     
-			MASK=$((MASK*2))
-		fi
-		echo "$JOB" >> $TEST_FILE    
-	        done  
-}
 
 # Debug section
 if [ $DEBUG -eq 1 ]; then #debug active
@@ -182,7 +140,7 @@ echo "Creating test files..."
 for type in "${TEST_TYPE[@]}"
 do
 	rm -f test_${type}.fio
-	create_test_file $type
+	create_test_file $type $TIME $DEV $TEST_FILE
 done
 
 # Check if there is an old null_blk module.
@@ -191,7 +149,7 @@ lsmod | grep null_blk > /dev/null
 
 echo "Creating null_blk device..."
 if [ $? -eq 0 ];
-then 
+then
 	modprobe -r null_blk
 fi
 
@@ -200,13 +158,12 @@ CUR_DEV=$(basename `mount | grep "on / " | cut -f 1 -d " "` | sed 's/\(...\).*/\
 
 # Check if blk-mq is enabled
 if [ -d /sys/block/$CUR_DEV/mq ];
-then 
+then
 	Q_MODE=2
 	echo "Blk-mq enabled. Switching to multi-queue mode."
 fi
 
 # Check available schedulers
-echo -n "Using schedulers: "
 SCHEDS=$(cat /sys/block/$CUR_DEV/queue/scheduler)
 
 # remove parentheses
@@ -216,12 +173,11 @@ IFS=' ' read -r -a SCHEDULERS <<< "$SCHEDS"
 
 if [ $DEBUG -eq 1 ]; then #debug active
         SCHEDULERS=($3)
-	echo "${SCHEDULERS[@]}"
 	echo "DEBUG: Overriding scheduler"
 	echo "DEBUG: Using schedulers -> ( ${SCHEDULERS[@]} )"
-elif
-	echo "${SCHEDULERS[@]}"
 fi
+
+echo "Using schedulers: ${SCHEDULERS[@]}"
 
 echo "Test type: ${TEST_TYPE[@]}"
 
@@ -234,11 +190,11 @@ touch $FILE_LOG
 # Main test loop
 N_SCHED=${#SCHEDULERS[@]}
 for sched in "${SCHEDULERS[@]}"
-do	
+do
 	# Change scheduler of the device if needed
 	if [ $sched != $BLK_MQ_SCHED ];
 	then
-		echo $sched > /sys/block/$DEV/queue/scheduler 2> /dev/null 
+		echo $sched > /sys/block/$DEV/queue/scheduler 2> /dev/null
 	fi
 
 	current_rep=1
@@ -262,45 +218,6 @@ do
 done
 
 # Save results
-RESULTS=()
-	file_count=0
-	while IFS='' read -r line || [[ -n "$line" ]]; do
-		RESULTS[$file_count]=$line
-		file_count=$((file_count+1))
-	done < $FILE_LOG
-echo  ${RESULTS[@]}
-
-# Create the results folder if it does not exist
-if [ ! -d $RESULTS_FOLDER ];then
-        echo "Results folder does not exist. Creating it"
-        mkdir $RESULTS_FOLDER
-fi
-
-# Show data in a table format and save them in a $OUTPUT_FILE
-rm $OUTPUT_FILE 2> /dev/null_blk
-echo
-echo Results
-echo "Unit of measure: KIOPS			Time: ${TIME}s		Device: $DEV" | tee $OUTPUT_FILE
-echo "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
-{
-printf 'SCHEDULER\tSEQREAD\tSEQWRITE\tRANDREAD\tRANDWRITE\n'
-
-k=0
-for (( c=0; c<$N_SCHED; c++ ))
-do
-	read=$((k))
-	write=$((k+1))
-	randread=$((k+2))
-	randwrite=$((k+3))
-	printf '%s\t%s\t%s\t%s\t%s\n' "${SCHEDULERS[$c]}" "${RESULTS[$read]}" "${RESULTS[$write]}"\
-		"${RESULTS[$randread]}" "${RESULTS[$randwrite]}"
-	k=$((randwrite+1))
-done
-
-} | column -t -s $'\t'| tee  -a $OUTPUT_FILE
-
-echo | tee -a $OUTPUT_FILE
-
-echo "Results written in :" $OUTPUT_FILE
+save_results
 
 clean
