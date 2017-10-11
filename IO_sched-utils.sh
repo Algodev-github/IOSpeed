@@ -56,6 +56,7 @@ check_parameters() {
 
 	if [ ${#SCHEDULERS[@]} -eq 0 ]; then
 		echo "WARNING: no scheduler found. Aborting test"
+		echo "For a complete test disable the debug mode in the script file."
 		exit 1
 	fi
 	# Check if the scheduler(s) inserted are available
@@ -65,6 +66,7 @@ check_parameters() {
 
 	if [ ${#TEST_TYPE[@]} -eq 0 ]; then
 		echo "WARNING: no type found. Aborting test"
+		echo "For a complete test disable the debug mode in the script file."
 		exit 1
 	fi
 
