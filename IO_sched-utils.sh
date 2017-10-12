@@ -113,7 +113,7 @@ group_reporting=1"
 	echo "$TEST_FILE_CONFIG" > $TEST_FILE
 
 	MASK=1
-	for i in `seq 1 $(nproc)`;
+	for i in `seq 1 $N_CPU`;
 		do
 
 JOB="
