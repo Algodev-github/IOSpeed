@@ -15,7 +15,7 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Set this value to 1 to enable debug mode(more on help section), 0 otherwise
-DEBUG=1
+DEBUG=0
 
 # Help section
 display_help() {
