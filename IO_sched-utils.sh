@@ -83,7 +83,7 @@ setup_cpu_governor(){
 	echo -n "Setting up cpu governor scaling -> "
 	for CPUFREQ in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor;
 		do [ -f $CPUFREQ ] || continue;
-			echo -n $SCALING_CPU > $CPUFREQ;
+			echo -n $SCALING_CPU > $CPUFREQ 2> /dev/null;
 		done
 	echo " value set to $SCALING_CPU"
 }
@@ -113,6 +113,9 @@ group_reporting=1"
 	echo "$TEST_FILE_CONFIG" > $TEST_FILE
 
 	MASK=1
+	n_proc=$(nproc)
+	n_proc=$((n_proc - 1 ))
+	MAX_MASK=$(echo "2^$n_proc" | bc) 2>/dev/null
 	for i in `seq 1 $N_CPU`;
 		do
 
@@ -120,7 +123,9 @@ JOB="
 [job $i]
 cpumask=$MASK
 "
+		if [ $MASK -lt $MAX_MASK ]; then
 			 MASK=$((MASK*2))
+		fi
 
 		     echo "$JOB" >> $TEST_FILE
 	   done
@@ -174,7 +179,10 @@ save_results() {
 	        mkdir $RESULTS_FOLDER
 	fi
 
-	rm $OUTPUT_FILE
+	if [ -f $OUTPUT_FILE ];then
+			mv $OUTPUT_FILE $OUTPUT_FILE.old
+	fi
+
 	echo
 	echo Results
 	echo "Unit of measure: KIOPS                    Time: ${TIME}s          Device: $DEV" | tee $OUTPUT_FILE
