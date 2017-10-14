@@ -56,7 +56,7 @@ for each fio's jobs and use only the selecte I/O schedulers and testing
 only sequential read and sequential write.
 
 DEFAULT VALUES:
-TIME: 60, N° Threads: $(nproc)
+TIME: 20, N° Threads: $(nproc)
 
 CONFIGURATION USED FOR NULL_BLK
 The null_blk device created by the test has the following settings:
@@ -108,7 +108,7 @@ trap trap_func SIGINT SIGTERM SIGKILL
 
 # Parameters
 APP_NAME="IO_sched-speedtest.sh"
-TIME=${1-60} # Seconds: 60 is the minimum value that does not cause
+TIME=${1-20} # Seconds: 20 is the minimum value that does not cause
 	     # high fluctuations in results
 
 OUTPUT_FILE="max_blk_speed${TIME}s.txt"
