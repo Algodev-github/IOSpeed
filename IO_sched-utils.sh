@@ -158,7 +158,7 @@ create_header() {
 	                        echo "ERROR"
 	                        exit 1
 	        esac
-	        header=$HEADER$test_type
+	        HEADER=$HEADER$test_type
 	done
 }
 
@@ -189,7 +189,7 @@ save_results() {
 	echo -n "Number of parallel threads: $N_CPU" | tee -a $OUTPUT_FILE
 	echo -e "\tNumber of cpu core(s): $(nproc)\n"| tee -a $OUTPUT_FILE
 	{
-	printf $header'\n'
+	printf $HEADER'\n'
 
 	k=0
 	index=0
