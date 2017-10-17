@@ -225,6 +225,9 @@ do
 		# Invoke test
 		echo "Scheduler: $sched - test $current_rep/${#TEST_TYPE[@]} ($test_type) - Number of parallel threads: $N_CPU - Duration ${TIME}s"
 		fio test_${test_type}.fio --output=$SCHED_LOG
+		# Here we sleep for 5 seconds to avoid any possible fluctuations
+		sleep 5
+
 		OUTPUT=$(less $SCHED_LOG | grep -Eho 'iops=[^[:space:]]*' | cut -d '=' -f 2 | sed 's/.$//')
 
 		# Format output value to KIOPs
