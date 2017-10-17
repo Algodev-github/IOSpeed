@@ -1,9 +1,8 @@
 # IO Speedtest
 This test script is designed to measure the performance of I/O
-schedulers in blk or of blk-mq alone, where no I/O scheduler is
-available yet.  The script automatically checks whether blk or blk-mq
-is in use, and, in the first case, measures performance with all
-available schedulers.
+schedulers in blk or of blk-mq alone. The script automatically
+checks whether blk or blk-mq is in use, and measures performance
+with all available schedulers.
 
 More information about the test and its goals are in IO_sched-speedtest.txt file.
 #Usage
