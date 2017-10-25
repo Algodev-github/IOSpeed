@@ -105,6 +105,7 @@ bs=4k
 ioengine=psync
 iodepth=4
 runtime=$TIME
+ramp_time=2
 direct=1
 filename=/dev/$DEV
 rw=$RW_TYPE
