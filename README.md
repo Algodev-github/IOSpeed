@@ -11,6 +11,10 @@ More information about the test and its goals are in IO_sched-speedtest.txt file
 
 Execute **./IO_sched-speedtest.sh -h** for more options.
 
+N.B: The debug options is enabled by default. For more information
+about this option see the help section or the variable comments in
+the IO_sched-speedtest file.
+
 ##  Info
 For more information about Algodev group and its projects visit out [site](http://algo.ing.unimo.it/algodev/projects.php)
 ## License

@@ -15,7 +15,15 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Set this value to 1 to enable debug mode(more on help section), 0 otherwise
-DEBUG=0
+# For now this options is enabled by default.
+# In the future, this option will be deleted and the script will become more
+# flexible by allowing the parameters to be entered or not depending on users
+# needs.
+# For now, you must enter *all* the necessary parameters of the debug mode.
+# So, in addition to the running time and the number of fio threads to generate,
+# you also need to pass the scheduler(s) and I/O type(s) to test.
+DEBUG=1
+
 
 # Help section
 display_help() {
@@ -65,6 +73,7 @@ The null_blk device created by the test has the following settings:
 - completion_nsec=0
 - nr_devices=1
 
+N.B: The debug mode is active by default
 AUTHOR:
 Luca Miccio <lucmiccio@gmail.com>"
 
